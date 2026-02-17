@@ -1,0 +1,55 @@
+---
+- name: Prepare containerization structure
+  hosts: serveurs
+  tasks:
+    - name: Create docker directory
+      ansible.builtin.file:
+        path: /root/app/docker
+        state: directory
+        mode: '0755'
+
+    - name: Create Dockerfile
+      ansible.builtin.copy:
+        dest: /root/app/docker/Dockerfile
+        content: |
+          FROM eclipse-temurin:17-jdk-alpine
+          WORKDIR /app
+          COPY . .
+          RUN chmod +x mvnw
+          RUN ./mvnw clean package -DskipTests
+          EXPOSE 8080
+          CMD ["java", "-jar", "target/app.jar"]
+
+    - name: Create docker-compose.yml
+      ansible.builtin.copy:
+        dest: /root/app/docker-compose.yml
+        content: |
+          version: '3.8'
+          services:
+            db:
+              image: postgres:15
+              container_name: db_container
+              environment:
+                POSTGRES_DB: devopsdb
+                POSTGRES_USER: devops
+                POSTGRES_PASSWORD: devops
+              ports:
+                - "5432:5432"
+              volumes:
+                - db_data:/var/lib/postgresql/data
+
+            backend:
+              build:
+                context: .
+                dockerfile: docker/Dockerfile
+              container_name: backend_container
+              ports:
+                - "8080:8080"
+              depends_on:
+                - db
+              environment:
+                SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/devopsdb
+                SPRING_DATASOURCE_USERNAME: devops
+                SPRING_DATASOURCE_PASSWORD: devops
+          volumes:
+            db_data:
