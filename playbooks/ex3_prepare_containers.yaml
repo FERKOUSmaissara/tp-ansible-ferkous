@@ -1,55 +1,85 @@
 ---
-- name: Prepare containerization structure
+- name: Prepare Docker environment for Gestion Abonnements
   hosts: serveurs
+  become: yes
+
+  vars:
+    app_path: /root/app
+    jar_name: gestion-abonnements-1.0-SNAPSHOT.jar
+
   tasks:
-    - name: Create docker directory
+
+    - name: Create application directory
       ansible.builtin.file:
-        path: /root/app/docker
+        path: "{{ app_path }}"
         state: directory
         mode: '0755'
 
     - name: Create Dockerfile
       ansible.builtin.copy:
-        dest: /root/app/docker/Dockerfile
+        dest: "{{ app_path }}/Dockerfile"
         content: |
-          FROM eclipse-temurin:17-jdk-alpine
+          FROM eclipse-temurin:21-jdk-alpine
           WORKDIR /app
-          COPY . .
-          RUN chmod +x mvnw
-          RUN ./mvnw clean package -DskipTests
-          EXPOSE 8080
-          CMD ["java", "-jar", "target/app.jar"]
+          COPY target/{{ jar_name }} app.jar
+          EXPOSE 4567
+          CMD ["java", "-jar", "app.jar", "api"]
 
     - name: Create docker-compose.yml
       ansible.builtin.copy:
-        dest: /root/app/docker-compose.yml
+        dest: "{{ app_path }}/docker-compose.yml"
         content: |
           version: '3.8'
-          services:
-            db:
-              image: postgres:15
-              container_name: db_container
-              environment:
-                POSTGRES_DB: devopsdb
-                POSTGRES_USER: devops
-                POSTGRES_PASSWORD: devops
-              ports:
-                - "5432:5432"
-              volumes:
-                - db_data:/var/lib/postgresql/data
 
+          services:
             backend:
-              build:
-                context: .
-                dockerfile: docker/Dockerfile
-              container_name: backend_container
+              build: .
+              container_name: gestion_backend
               ports:
-                - "8080:8080"
-              depends_on:
-                - db
-              environment:
-                SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/devopsdb
-                SPRING_DATASOURCE_USERNAME: devops
-                SPRING_DATASOURCE_PASSWORD: devops
-          volumes:
-            db_data:
+                - "4567:4567"
+              volumes:
+                - ./data:/app/data
+              restart: unless-stopped
+---
+- name: Prepare Docker environment for Gestion Abonnements
+  hosts: serveurs
+  become: yes
+
+  vars:
+    app_path: /root/app
+    jar_name: gestion-abonnements-1.0-SNAPSHOT.jar
+
+  tasks:
+
+    - name: Create application directory
+      ansible.builtin.file:
+        path: "{{ app_path }}"
+        state: directory
+        mode: '0755'
+
+    - name: Create Dockerfile
+      ansible.builtin.copy:
+        dest: "{{ app_path }}/Dockerfile"
+        content: |
+          FROM eclipse-temurin:21-jdk-alpine
+          WORKDIR /app
+          COPY target/{{ jar_name }} app.jar
+          EXPOSE 4567
+          CMD ["java", "-jar", "app.jar", "api"]
+
+    - name: Create docker-compose.yml
+      ansible.builtin.copy:
+        dest: "{{ app_path }}/docker-compose.yml"
+        content: |
+          version: '3.8'
+
+          services:
+            backend:
+              build: .
+              container_name: gestion_backend
+              ports:
+                - "4567:4567"
+              volumes:
+                - ./data:/app/data
+              restart: unless-stopped
+
