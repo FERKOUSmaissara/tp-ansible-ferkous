@@ -1,0 +1,24 @@
+---
+- name: Setup hourly application data backup
+  hosts: serveurs
+  become: yes
+
+  vars:
+    backup_dir: /backup
+    data_dir: /root/app/data
+
+  tasks:
+
+    - name: Create backup directory
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Add hourly cron job for data backup
+      ansible.builtin.cron:
+        name: "Hourly application data backup"
+        minute: "0"
+        job: >
+          tar -czf {{ backup_dir }}/data_$(date +\%Y\%m\%d_\%H\%M).tar.gz
+          {{ data_dir }}

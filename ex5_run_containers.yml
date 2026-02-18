@@ -1,0 +1,27 @@
+---
+- name: Run application containers on VM
+  hosts: serveurs
+  become: yes
+
+  vars:
+    app_path: /root/app
+    app_port: 4567
+
+  tasks:
+
+    - name: Start containers
+      ansible.builtin.shell: docker-compose up -d
+      args:
+        chdir: "{{ app_path }}"
+
+    - name: Wait for application port to be open
+      ansible.builtin.wait_for:
+        host: localhost
+        port: "{{ app_port }}"
+        delay: 5
+        timeout: 30
+
+    - name: Verify application responds
+      ansible.builtin.uri:
+        url: "http://localhost:{{ app_port }}"
+        status_code: 200

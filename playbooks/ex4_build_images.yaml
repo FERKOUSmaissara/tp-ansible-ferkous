@@ -1,6 +1,7 @@
 ---
 - name: Build Docker images
-  hosts: serveurs
+  hosts: localhost
+  connection: local
   become: yes
 
   vars:
@@ -8,12 +9,8 @@
 
   tasks:
 
-    - name: Build image with Dockerfile
-      ansible.builtin.shell: docker build -t gestion-abonnements:latest .
+    - name: Build images with docker compose
+      ansible.builtin.shell: docker compose build
       args:
         chdir: "{{ app_path }}"
 
-    - name: Build images with docker-compose
-      ansible.builtin.shell: docker-compose build
-      args:
-        chdir: "{{ app_path }}"
