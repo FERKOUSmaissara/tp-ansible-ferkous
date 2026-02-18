@@ -1,24 +1,28 @@
 ---
-- name: Setup hourly application data backup
+- name: Setup hourly application backup
   hosts: serveurs
   become: yes
 
   vars:
     backup_dir: /backup
-    data_dir: /root/app/data
+    volume_name: app_data
 
   tasks:
 
-    - name: Create backup directory
+    - name: Ensure backup directory exists
       ansible.builtin.file:
         path: "{{ backup_dir }}"
         state: directory
         mode: '0755'
 
-    - name: Add hourly cron job for data backup
+    - name: Add hourly cron job to backup Docker volume
       ansible.builtin.cron:
-        name: "Hourly application data backup"
+        name: "Hourly Docker volume backup"
         minute: "0"
         job: >
-          tar -czf {{ backup_dir }}/data_$(date +\%Y\%m\%d_\%H\%M).tar.gz
-          {{ data_dir }}
+          docker run --rm
+          -v {{ volume_name }}:/data
+          -v {{ backup_dir }}:/backup
+          alpine
+          tar -czf /backup/app_data_$(date +\%Y\%m\%d_\%H\%M).tar.gz -C /data .
+
